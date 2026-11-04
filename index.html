@@ -27,7 +27,7 @@
   </div>
   <div id="paragraphStatus" class="status">Load the shared dictionary to begin.</div>
   <h3>Lisaan ud Dawat result</h3>
-  <div id="paragraphOutput" class="status" style="min-height:100px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:17px;line-height:1.8" aria-live="polite">Your transliteration will appear here.</div>
+  <div id="paragraphOutput" class="status" style="min-height:100px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:20px;line-height:1.9;direction:rtl;text-align:right" aria-live="polite">Your transliteration will appear here.</div>
   <button class="blue" id="copyParagraphBtn" disabled>Copy paragraph result</button>
 </section>
 <section class="card"><h2>Dictionary Search</h2><div class="toolbar"><input id="dictionarySearch" placeholder="Search word, transliteration or meaning"><button class="blue" id="searchAllBtn">Search</button></div><div id="dictionaryResults" class="suggestions"></div></section>
@@ -86,6 +86,45 @@ function buildParagraphIndex(){
     ? `Ready. ${words.length.toLocaleString()} dictionary entries indexed for paragraph transliteration.`
     : 'The dictionary has not loaded yet.');
 }
+// Approximate phonetic fallback for Gujarati/Lisaan ud Dawat sounds.
+// Dictionary matches always take priority; this fallback handles words not in the dictionary.
+const phoneticUnits = [
+  ["chh","چھ"],["ch","چ"],["sh","ش"],["zh","ژ"],["kh","کھ"],["gh","گھ"],
+  ["bh","بھ"],["ph","پھ"],["th","تھ"],["dh","دھ"],["jh","جھ"],
+  ["ṭh","ٹھ"],["thh","ٹھ"],["ḍh","ڈھ"],["ṛh","ڑھ"],["ng","نگ"],
+  ["aa","ا"],["ā","ا"],["ee","ی"],["ii","ی"],["ī","ی"],["oo","و"],["uu","و"],["ū","و"],
+  ["ai","َے"],["au","َو"],["ṭ","ٹ"],["ḍ","ڈ"],["ṛ","ڑ"],["ḷ","ل"],
+  ["a","َ"],["i","ِ"],["u","ُ"],["e","ے"],["o","و"],
+  ["b","ب"],["p","پ"],["t","ت"],["d","د"],["k","ک"],["g","گ"],
+  ["c","ک"],["j","ج"],["m","م"],["n","ن"],["ṇ","ن"],["y","ی"],
+  ["r","ر"],["l","ل"],["v","و"],["w","و"],["s","س"],["z","ز"],
+  ["f","ف"],["q","ق"],["h","ہ"],["x","خ"]
+];
+function phoneticFallback(word){
+  const s=cleanMatchText(word).replace(/ā/g,"aa").replace(/ī/g,"ii").replace(/ū/g,"uu").replace(/([bcdfghjklmnpqrstvwxyz])\1+/g,"$1");
+  let out="",i=0,hasLetter=false;
+  while(i<s.length){
+    let found=false;
+    for(const [roman,glyph] of phoneticUnits){
+      if(s.startsWith(roman,i)){
+        // Initial vowels need a carrier; short vowels use Arabic vowel marks after consonants.
+        if(i===0 && ["َ","ِ","ُ"].includes(glyph)){
+          out += glyph==="َ" ? "اَ" : glyph==="ِ" ? "اِ" : "اُ";
+        }else if(i===0 && glyph==="ے"){
+          out += "ای";
+        }else{
+          out += glyph;
+        }
+        i+=roman.length;found=true;hasLetter=true;break;
+      }
+    }
+    if(!found){
+      // Do not fabricate a spelling for characters outside the supported Latin phonetic set.
+      return word;
+    }
+  }
+  return hasLetter ? out : word;
+}
 function transliterateParagraph(input){
   // Keep every original separator (spaces, punctuation and line breaks) exactly as typed.
   const tokenPattern = /[\p{L}\p{N}]+(?:['’‐‑‒–—-][\p{L}\p{N}]+)*/gu;
@@ -94,7 +133,7 @@ function transliterateParagraph(input){
   while((match=tokenPattern.exec(input))!==null){
     tokens.push({text:match[0],start:match.index,end:match.index+match[0].length,key:cleanMatchText(match[0])});
   }
-  let output = "", cursor = 0, matchedCount = 0, unmatchedCount = 0;
+  let output = "", cursor = 0, dictionaryCount = 0, fallbackCount = 0, unmatchedCount = 0;
   for(let i=0;i<tokens.length;){
     const current = tokens[i];
     output += input.slice(cursor,current.start);
@@ -117,16 +156,18 @@ function transliterateParagraph(input){
       output += best.output;
       cursor=last.end;
       i+=best.tokens.length;
-      matchedCount++;
+      dictionaryCount++;
     }else{
-      output += current.text;
+      const fallback=phoneticFallback(current.text);
+      output += fallback;
       cursor=current.end;
       i++;
-      unmatchedCount++;
+      if(fallback!==current.text) fallbackCount++;
+      else unmatchedCount++;
     }
   }
   output += input.slice(cursor);
-  return {output,matchedCount,unmatchedCount};
+  return {output,dictionaryCount,fallbackCount,unmatchedCount,matchedCount:dictionaryCount+fallbackCount};
 }
 $('transliterateBtn').addEventListener('click',function(event){
   event.preventDefault();
@@ -146,9 +187,8 @@ $('transliterateBtn').addEventListener('click',function(event){
     const result=transliterateParagraph(input);
     $('paragraphOutput').textContent=result.output || 'No text was produced.';
     $('copyParagraphBtn').disabled=!result.output;
-    status('paragraphStatus',result.matchedCount
-      ? `Completed successfully. Matched ${result.matchedCount} word/phrase(s); ${result.unmatchedCount} token(s) were not found and remain unchanged.`
-      : `The button worked, but none of the ${result.unmatchedCount} words matched the dictionary. Check the phonetic spelling or add the terms to the dictionary.`);
+    status('paragraphStatus',
+      `Completed. ${result.dictionaryCount} dictionary match(es), ${result.fallbackCount} phonetic fallback word(s), ${result.unmatchedCount} unsupported token(s) left unchanged. Phonetic spellings are approximate; please review them.`);
   }catch(error){
     console.error('Paragraph transliteration failed:',error);
     status('paragraphStatus','Transliteration error: '+(error && error.message ? error.message : String(error)));
