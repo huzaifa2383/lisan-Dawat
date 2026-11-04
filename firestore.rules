@@ -1,0 +1,15 @@
+// MERGE ONLY THESE TWO match blocks into your EXISTING Firestore rules.
+// Do NOT replace the complete rules file for the Madrasa Attendance app.
+// Place both blocks inside the existing:
+// match /databases/{database}/documents { ... }
+
+match /dictionary_words/{wordId} {
+  allow read: if true;
+  allow create, update, delete: if request.auth != null
+    && exists(/databases/$(database)/documents/dictionary_admins/$(request.auth.uid));
+}
+
+match /dictionary_admins/{userId} {
+  allow read: if request.auth != null && request.auth.uid == userId;
+  allow write: if false;
+}
