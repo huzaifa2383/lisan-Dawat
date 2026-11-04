@@ -1,49 +1,52 @@
-LISAAN UD DAWAT TRANSLITERATION - GITHUB PAGES
+LISAAN UD DAWAT TRANSLITERATION — GITHUB PAGES + FIREBASE
 
-FILES
-- index.html: website
-- dictionary.csv: your supplied 8,384-entry dictionary export
-- firestore.rules: secure Firestore rules (apply in Firebase Console)
-- manifest.webmanifest and sw.js: installable/PWA support
+YOUR PROJECT
+Firebase project ID: lisaan-ud-dawat
+GitHub repository: huzaifa2383/lisan-Dawat
+Expected website: https://huzaifa2383.github.io/lisan-Dawat/
 
-IMPORTANT: This is a static GitHub Pages website. GitHub Pages does not run PHP.
-The dictionary is stored in the separate Firestore collection `dictionary_words`.
-The attendance collections are not used or changed.
+FILES TO UPLOAD TO THE ROOT OF YOUR EXISTING GITHUB REPOSITORY
+- index.html                 Website (already connected to lisaan-ud-dawat Firebase)
+- dictionary.csv             Supplied dictionary export (8,384 entries)
+- firestore.rules            Complete rules for the SEPARATE Lisaan Firebase project
+- manifest.webmanifest       PWA metadata
+- sw.js                      Service worker
+- README.txt                 These instructions
 
-PART 1 - CREATE THE GITHUB WEBSITE
-1. Sign in to GitHub.
-2. Create a NEW repository, for example: lisaan-transliteration
-3. Choose Public and create it.
-4. Open the repository and choose Add file > Upload files.
-5. Extract this ZIP on your computer first. Upload the FILES inside the folder (not the ZIP itself):
-   index.html, dictionary.csv, firestore.rules, manifest.webmanifest, sw.js, README.txt
-6. Commit changes to the main branch.
-7. Open Settings > Pages.
-8. Under Build and deployment choose Deploy from a branch.
-9. Select Branch: main and Folder: / (root), then Save.
-10. Your website will be at https://YOUR-GITHUB-USERNAME.github.io/lisaan-transliteration/
+IMPORTANT: Extract the ZIP and upload these files themselves, not the ZIP. They should appear beside each other in the repository root. Replacing index.html and uploading the other files is safe for the attendance website because this is a separate repository and Firebase project.
 
-PART 2 - FIREBASE SETUP (ONE TIME)
-1. Open https://console.firebase.google.com/ and choose project: madrasa-attendance-47e69
-2. Open Firestore Database. If it has not been created, create the database.
-3. Open the Rules tab. IMPORTANT: do NOT replace your existing attendance rules. Merge the two `match` blocks from firestore.rules in this package inside your existing `match /databases/{database}/documents { ... }` block, before its closing brace. Keep all existing attendance rules unchanged, then Publish. If you are unsure, send me your current Firestore Rules text before changing anything.
-   The supplied rules add public read access for dictionary_words and admin-only writes; dictionary_admins documents are readable only by the matching signed-in user and cannot be written from the website.
-4. Open Authentication > Get started > Sign-in method. Enable Email/Password.
-5. Open Authentication > Users > Add user. Create the admin email and password you will use.
-6. Copy the new user's UID from the Users page.
-7. Open Firestore Database > Data. Create collection `dictionary_admins`.
-8. Set the document ID to the exact UID copied above. Add a field `role` (string) with value `admin`.
-   Do NOT make the dictionary_admins collection publicly writable.
-9. Open your GitHub Pages website, click Admin, sign in with that email/password.
-10. Open Import CSV, choose dictionary.csv, and click Import CSV to shared dictionary. Keep the page open until it says Done.
-   Import writes in batches; if interrupted, run it again. Matching IDs are safely overwritten.
+PART 1 — UPDATE YOUR EXISTING GITHUB REPOSITORY
+1. Open https://github.com/huzaifa2383/lisan-Dawat
+2. Choose Add file > Upload files.
+3. Upload all six files listed above from this folder. If GitHub asks whether to replace index.html or other existing files, confirm the replacement.
+4. Commit directly to the main branch.
+5. Wait for Actions > pages-build-deployment to show a green check.
+6. Open https://huzaifa2383.github.io/lisan-Dawat/ and hard-refresh with Ctrl+Shift+R.
+
+PART 2 — FIRESTORE RULES (NEW PROJECT ONLY)
+You have already created the separate Firebase project `lisaan-ud-dawat` and the `dictionary_admins` document for your admin UID.
+1. Open Firebase Console > project `lisaan-ud-dawat` > Firestore Database > Rules.
+2. Replace the rules in THIS NEW PROJECT with the complete contents of firestore.rules.
+3. Click Publish.
+Do not paste these rules into the Madrasa Attendance Firebase project. Do not change the attendance project's rules.
+
+PART 3 — AUTHORISED DOMAIN
+1. In Firebase Console, open Authentication > Settings > Authorized domains.
+2. Add `huzaifa2383.github.io` if it is not already listed. Do not include https:// or a path.
+
+PART 4 — IMPORT THE DICTIONARY
+1. Open the published GitHub Pages website.
+2. Click Admin.
+3. Sign in with the email/password user you created in Firebase Authentication.
+4. Confirm the admin panel appears. The user must have a document in dictionary_admins whose document ID is their exact Firebase UID.
+5. Open the Import CSV tab, choose dictionary.csv from your computer, and click Import CSV to shared dictionary.
+6. Keep the page open until the import reports completion. It imports in batches. If it stops partway, you may safely run the same import again because the CSV IDs are used as document IDs.
 
 HOW IT WORKS
-- Visitors can search and use the shared dictionary without signing in.
-- Only an approved Firebase user whose UID has a document in dictionary_admins can add/edit/delete/import.
-- New admin accounts created from the website are NOT automatically approved. An owner must add their UID document in Firebase Console.
-- This uses the same Firebase project config as your attendance app but stores words in dictionary_words only.
-- Keep your Firebase rules as supplied. Do not use open write rules such as allow read, write: if true.
+- Anyone can read and search dictionary_words without signing in.
+- Only a signed-in user whose UID has an approval document in dictionary_admins can add, edit, delete, or import words.
+- The website uses Firebase project `lisaan-ud-dawat` only. It does not connect to the attendance project.
+- Firebase web configuration values in index.html are public client configuration, not admin passwords or private service-account keys. Never put a service-account private key in this website.
 
-NOTE
-Firebase may have usage limits and billing settings. The app itself and GitHub Pages are free to host; avoid enabling paid services unless you intentionally choose to.
+COST
+GitHub Pages and Firebase Spark have free usage tiers. Stay on Spark and monitor Firebase usage. Do not enable paid services unless you intentionally choose to.

@@ -1,15 +1,23 @@
-// MERGE ONLY THESE TWO match blocks into your EXISTING Firestore rules.
-// Do NOT replace the complete rules file for the Madrasa Attendance app.
-// Place both blocks inside the existing:
-// match /databases/{database}/documents { ... }
+rules_version = '2';
 
-match /dictionary_words/{wordId} {
-  allow read: if true;
-  allow create, update, delete: if request.auth != null
-    && exists(/databases/$(database)/documents/dictionary_admins/$(request.auth.uid));
-}
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isDictionaryAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/dictionary_admins/$(request.auth.uid));
+    }
 
-match /dictionary_admins/{userId} {
-  allow read: if request.auth != null && request.auth.uid == userId;
-  allow write: if false;
+    // Dictionary entries are public to read; only approved admins may change them.
+    match /dictionary_words/{wordId} {
+      allow read: if true;
+      allow create, update, delete: if isDictionaryAdmin();
+    }
+
+    // Admin approval documents can only be read by their owner.
+    // Create/update/delete approvals through Firebase Console only.
+    match /dictionary_admins/{adminId} {
+      allow get: if request.auth != null && request.auth.uid == adminId;
+      allow list, create, update, delete: if false;
+    }
+  }
 }

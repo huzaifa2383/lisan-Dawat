@@ -22,7 +22,7 @@
 <div class="footer">Lisaan ud Dawat Dictionary · Hosted on GitHub Pages · Dictionary updates shared through Firebase</div>
 <script>
 // Same Firebase project as the Madrasa Attendance app; dictionary uses its own collection.
-firebase.initializeApp({apiKey:"AIzaSyAhjNUF0NlZBxG7ujWnY1Xse2h0q6CBBVQ",authDomain:"madrasa-attendance-47e69.firebaseapp.com",projectId:"madrasa-attendance-47e69",storageBucket:"madrasa-attendance-47e69.appspot.com",messagingSenderId:"390959800510",appId:"1:390959800510:web:19a1133e41b55b0ed1beef"});
+firebase.initializeApp({apiKey:"AIzaSyAGvLyeYCkkrK_IAmnhO5wbmw-Bn0j3F6g",authDomain:"lisaan-ud-dawat.firebaseapp.com",projectId:"lisaan-ud-dawat",storageBucket:"lisaan-ud-dawat.firebasestorage.app",messagingSenderId:"378764697076",appId:"1:378764697076:web:8b93d41a420feb2f042da1",measurementId:"G-1L6EKF0FE5"});
 const db=firebase.firestore(),auth=firebase.auth(),COL='dictionary_words';let words=[],selected=null,isAdmin=false;
 const $=id=>document.getElementById(id),norm=s=>(s||'').toString().toLocaleLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').trim();
 $('themeBtn').onclick=()=>{let dark=document.documentElement.dataset.theme!=='dark';document.documentElement.dataset.theme=dark?'dark':'light';$('themeBtn').textContent=dark?'☀️':'🌙';localStorage.setItem('lisaan-theme',dark?'dark':'light')};if(localStorage.getItem('lisaan-theme')==='dark'){$('themeBtn').click()}
