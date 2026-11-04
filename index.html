@@ -128,15 +128,32 @@ function transliterateParagraph(input){
   output += input.slice(cursor);
   return {output,matchedCount,unmatchedCount};
 }
-$('transliterateBtn').onclick=()=>{
+$('transliterateBtn').addEventListener('click',function(event){
+  event.preventDefault();
   const input=$('paragraphInput').value;
-  if(!input.trim()){status('paragraphStatus','Please enter a paragraph first.');return}
-  if(!paragraphReady){status('paragraphStatus','The shared dictionary is still loading. Please try again in a moment.');return}
-  const result=transliterateParagraph(input);
-  $('paragraphOutput').textContent=result.output;
-  $('copyParagraphBtn').disabled=!result.output;
-  status('paragraphStatus',`Done. Matched ${result.matchedCount} word/phrase(s); ${result.unmatchedCount} token(s) were not found and were left unchanged.`);
-};
+  if(!input.trim()){
+    status('paragraphStatus','Please enter a paragraph first.');
+    $('paragraphOutput').textContent='Your transliteration will appear here.';
+    $('copyParagraphBtn').disabled=true;
+    return;
+  }
+  if(!paragraphReady || phraseIndex.size===0){
+    status('paragraphStatus','The dictionary index is not ready yet. Please refresh the page and try again.');
+    return;
+  }
+  status('paragraphStatus','Transliterating…');
+  try{
+    const result=transliterateParagraph(input);
+    $('paragraphOutput').textContent=result.output || 'No text was produced.';
+    $('copyParagraphBtn').disabled=!result.output;
+    status('paragraphStatus',result.matchedCount
+      ? `Completed successfully. Matched ${result.matchedCount} word/phrase(s); ${result.unmatchedCount} token(s) were not found and remain unchanged.`
+      : `The button worked, but none of the ${result.unmatchedCount} words matched the dictionary. Check the phonetic spelling or add the terms to the dictionary.`);
+  }catch(error){
+    console.error('Paragraph transliteration failed:',error);
+    status('paragraphStatus','Transliteration error: '+(error && error.message ? error.message : String(error)));
+  }
+});
 $('clearParagraphBtn').onclick=()=>{
   $('paragraphInput').value='';
   $('paragraphOutput').textContent='Your transliteration will appear here.';
