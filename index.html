@@ -17,6 +17,19 @@
 <body>
 <header class="topbar"><h1>📖 Lisaan ud Dawat Transliteration</h1><div class="top-actions"><button class="ghost iconbtn" id="themeBtn" title="Toggle theme">🌙</button><button class="ghost" id="adminToggle">🔐 Admin</button></div></header>
 <section class="card"><h2>English to Lisaan ud Dawat</h2><p class="hint">Type an English phonetic spelling to find the matching Lisaan ud Dawat word. Select a result to copy it.</p><input id="searchInput" placeholder="Start typing... e.g. Aab, Aimmat Tahereen" autocomplete="off"><div id="engineStatus" class="status">Connecting to dictionary…</div><div class="grid"><div><h3>Matching words</h3><div id="results" class="suggestions"></div></div><div><h3>Selected word</h3><div class="card" style="margin:0;box-shadow:none"><div id="selectedWord" class="word">—</div><div id="selectedRoman" class="roman"></div><div id="selectedMeaning" class="meaning"></div><button class="green" id="copyBtn" disabled>Copy Lisaan ud Dawat</button></div></div></div></section>
+<section class="card" id="paragraphTool">
+  <h2>Full Paragraph Transliteration</h2>
+  <p class="hint">Paste or type a complete English phonetic paragraph. The tool matches the longest available phrases and words from the shared Lisaan ud Dawat dictionary. Punctuation and spacing are kept; anything not found remains unchanged.</p>
+  <textarea id="paragraphInput" rows="6" placeholder="Type or paste your paragraph here…"></textarea>
+  <div class="toolbar">
+    <button class="green" id="transliterateBtn">Transliterate paragraph</button>
+    <button class="ghost" id="clearParagraphBtn">Clear</button>
+  </div>
+  <div id="paragraphStatus" class="status">Load the shared dictionary to begin.</div>
+  <h3>Lisaan ud Dawat result</h3>
+  <div id="paragraphOutput" class="status" style="min-height:100px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:17px;line-height:1.8" aria-live="polite">Your transliteration will appear here.</div>
+  <button class="blue" id="copyParagraphBtn" disabled>Copy paragraph result</button>
+</section>
 <section class="card"><h2>Dictionary Search</h2><div class="toolbar"><input id="dictionarySearch" placeholder="Search word, transliteration or meaning"><button class="blue" id="searchAllBtn">Search</button></div><div id="dictionaryResults" class="suggestions"></div></section>
 <section class="card hidden" id="adminPanel"><h2>🔐 Dictionary Admin</h2><div id="authArea"><p class="hint">Sign in with the admin email and password created in Firebase Authentication. New accounts must be approved in Firestore before editing.</p><input id="adminEmail" type="email" placeholder="Admin email"><input id="adminPassword" type="password" placeholder="Password"><div class="toolbar"><button class="green" id="loginBtn">Sign in</button><button class="ghost" id="signupBtn">Create account</button></div><div id="authStatus" class="status">Not signed in.</div></div><div id="adminTools" class="hidden"><div class="toolbar"><span id="adminIdentity" class="hint"></span><button class="ghost" id="logoutBtn">Sign out</button></div><div class="tabs"><button class="tab active" data-tab="editTab">Add / Edit word</button><button class="tab" data-tab="importTab">Import CSV</button></div><div id="editTab"><div class="admin-grid"><label>Arabic / Lisaan ud Dawat word<input id="fWord" placeholder="word_name"></label><label>Search terms<input id="fTerms" placeholder="word_terms"></label><label>English transliteration<input id="fRoman" placeholder="transliteration"></label><label>Alphabet<input id="fAlphabet" placeholder="alphabet"></label><label>Level<select id="fLevel"><option>beginner</option><option>intermediate</option><option>advance</option></select></label><label>Categories<input id="fCategory" placeholder="category_names"></label><label class="wide">Meaning<textarea id="fMeaning" placeholder="meanings"></textarea></label><label>Record ID (leave blank for new word)<input id="fId" placeholder="Auto-generated for new word"></label></div><div class="toolbar"><button class="green" id="saveWordBtn">Save word</button><button class="ghost" id="clearFormBtn">Clear</button><button class="red" id="deleteWordBtn" disabled>Delete selected</button></div><div id="editStatus" class="status">Search a word and choose Edit, or add a new entry.</div></div><div id="importTab" class="hidden"><p class="hint">Choose the supplied dictionary.csv file. Import runs in batches and updates matching IDs. Keep this page open until it finishes. Do not import repeatedly unless you intend to overwrite the same records.</p><input type="file" id="csvFile" accept=".csv,text/csv"><button class="orange" id="importBtn">Import CSV to shared dictionary</button><div id="importStatus" class="status">8,384 source entries are included in dictionary.csv.</div></div></div></section>
 <div class="footer">Lisaan ud Dawat Dictionary · Hosted on GitHub Pages · Dictionary updates shared through Firebase</div>
@@ -34,7 +47,112 @@ function renderMatches(list,target,admin=false){$(target).innerHTML=list.slice(0
 function findMatches(q){let n=norm(q);if(!n)return [];return words.map(w=>{let roman=norm(w.transliteration),terms=norm(w.word_terms),meaning=norm(w.meanings);let score=roman===n?0:roman.startsWith(n)?1:terms.startsWith(n)?2:roman.includes(n)?3:terms.includes(n)?4:meaning.includes(n)?5:99;return {w,score}}).filter(x=>x.score<99).sort((a,b)=>a.score-b.score||norm(a.w.transliteration).localeCompare(norm(b.w.transliteration))).map(x=>x.w)}
 $('searchInput').addEventListener('input',()=>renderMatches(findMatches($('searchInput').value),'results'));
 function doDictionarySearch(){let q=norm($('dictionarySearch').value);if(!q){$('dictionaryResults').innerHTML='<p class="hint">Enter a search term.</p>';return}let list=words.filter(w=>[w.word_name,w.word_terms,w.transliteration,w.meanings,w.category_names].some(v=>norm(v).includes(q)));renderMatches(list,'dictionaryResults',isAdmin)}$('searchAllBtn').onclick=doDictionarySearch;$('dictionarySearch').addEventListener('keydown',e=>{if(e.key==='Enter')doDictionarySearch()});$('copyBtn').onclick=async()=>{if(selected?.word_name){await navigator.clipboard.writeText(selected.word_name);$('copyBtn').textContent='Copied!';setTimeout(()=>$('copyBtn').textContent='Copy Lisaan ud Dawat',1300)}};
-async function loadWords(){try{status('engineStatus','Loading shared dictionary…');const snap=await db.collection(COL).get();words=snap.docs.map(d=>({id:d.id,...d.data()}));words.sort((a,b)=>Number(a.id)-Number(b.id));status('engineStatus',words.length?`Ready · ${words.length.toLocaleString()} words loaded from the shared dictionary.`:'The shared dictionary is empty. Sign in as admin and import dictionary.csv.');renderMatches([], 'results')}catch(e){status('engineStatus','Could not load the shared dictionary. Check Firebase setup and Firestore rules. '+e.message)}}
+// Full-paragraph transliteration: longest phrase match first, using the shared Firestore dictionary.
+let phraseIndex = new Map(), paragraphReady = false;
+function cleanMatchText(value){
+  return norm(value).replace(/[’‘]/g,"'").replace(/[‐‑‒–—]/g,"-");
+}
+function splitVariants(value){
+  return String(value||"").split(/[;,|\n]+/).map(x=>x.trim()).filter(Boolean);
+}
+function phraseTokens(value){
+  const matches = cleanMatchText(value).match(/[\p{L}\p{N}]+(?:['-][\p{L}\p{N}]+)*/gu);
+  return matches || [];
+}
+function buildParagraphIndex(){
+  phraseIndex = new Map();
+  let added = 0;
+  for(const w of words){
+    if(!w.word_name) continue;
+    const variants = [w.transliteration, ...splitVariants(w.word_terms)];
+    const seen = new Set();
+    for(const variant of variants){
+      const tokens = phraseTokens(variant);
+      if(!tokens.length) continue;
+      const key = tokens.join(" ");
+      if(seen.has(key)) continue;
+      seen.add(key);
+      const first = tokens[0];
+      if(!phraseIndex.has(first)) phraseIndex.set(first,[]);
+      phraseIndex.get(first).push({tokens, output:w.word_name, roman:variant});
+      added++;
+    }
+  }
+  for(const candidates of phraseIndex.values()){
+    candidates.sort((a,b)=>b.tokens.length-a.tokens.length || a.roman.length-b.roman.length);
+  }
+  paragraphReady = words.length>0;
+  status('paragraphStatus', paragraphReady
+    ? `Ready. ${words.length.toLocaleString()} dictionary entries indexed for paragraph transliteration.`
+    : 'The dictionary has not loaded yet.');
+}
+function transliterateParagraph(input){
+  // Keep every original separator (spaces, punctuation and line breaks) exactly as typed.
+  const tokenPattern = /[\p{L}\p{N}]+(?:['’‐‑‒–—-][\p{L}\p{N}]+)*/gu;
+  const tokens = [];
+  let match;
+  while((match=tokenPattern.exec(input))!==null){
+    tokens.push({text:match[0],start:match.index,end:match.index+match[0].length,key:cleanMatchText(match[0])});
+  }
+  let output = "", cursor = 0, matchedCount = 0, unmatchedCount = 0;
+  for(let i=0;i<tokens.length;){
+    const current = tokens[i];
+    output += input.slice(cursor,current.start);
+    const candidates = phraseIndex.get(current.key) || [];
+    let best = null;
+    for(const candidate of candidates){
+      if(i+candidate.tokens.length>tokens.length) continue;
+      let ok = true;
+      for(let j=0;j<candidate.tokens.length;j++){
+        if(tokens[i+j].key!==candidate.tokens[j]){ok=false;break;}
+        if(j>0){
+          const between=input.slice(tokens[i+j-1].end,tokens[i+j].start);
+          if(!/^\s+$/.test(between)){ok=false;break;}
+        }
+      }
+      if(ok){best=candidate;break;}
+    }
+    if(best){
+      const last=tokens[i+best.tokens.length-1];
+      output += best.output;
+      cursor=last.end;
+      i+=best.tokens.length;
+      matchedCount++;
+    }else{
+      output += current.text;
+      cursor=current.end;
+      i++;
+      unmatchedCount++;
+    }
+  }
+  output += input.slice(cursor);
+  return {output,matchedCount,unmatchedCount};
+}
+$('transliterateBtn').onclick=()=>{
+  const input=$('paragraphInput').value;
+  if(!input.trim()){status('paragraphStatus','Please enter a paragraph first.');return}
+  if(!paragraphReady){status('paragraphStatus','The shared dictionary is still loading. Please try again in a moment.');return}
+  const result=transliterateParagraph(input);
+  $('paragraphOutput').textContent=result.output;
+  $('copyParagraphBtn').disabled=!result.output;
+  status('paragraphStatus',`Done. Matched ${result.matchedCount} word/phrase(s); ${result.unmatchedCount} token(s) were not found and were left unchanged.`);
+};
+$('clearParagraphBtn').onclick=()=>{
+  $('paragraphInput').value='';
+  $('paragraphOutput').textContent='Your transliteration will appear here.';
+  $('copyParagraphBtn').disabled=true;
+  status('paragraphStatus',paragraphReady?'Ready for a new paragraph.':'Load the shared dictionary to begin.');
+};
+$('copyParagraphBtn').onclick=async()=>{
+  const value=$('paragraphOutput').textContent;
+  if(!value || value==='Your transliteration will appear here.') return;
+  try{
+    await navigator.clipboard.writeText(value);
+    $('copyParagraphBtn').textContent='Copied!';
+    setTimeout(()=>$('copyParagraphBtn').textContent='Copy paragraph result',1300);
+  }catch(e){status('paragraphStatus','Could not copy automatically. Please select and copy the result.')}
+};
+async function loadWords(){try{status('engineStatus','Loading shared dictionary…');const snap=await db.collection(COL).get();words=snap.docs.map(d=>({id:d.id,...d.data()}));words.sort((a,b)=>Number(a.id)-Number(b.id));buildParagraphIndex();status('engineStatus',words.length?`Ready · ${words.length.toLocaleString()} words loaded from the shared dictionary.`:'The shared dictionary is empty. Sign in as admin and import dictionary.csv.');renderMatches([], 'results')}catch(e){status('engineStatus','Could not load the shared dictionary. Check Firebase setup and Firestore rules. '+e.message)}}
 $('adminToggle').onclick=()=>$('adminPanel').classList.toggle('hidden');$('signupBtn').onclick=async()=>{try{let c=await auth.createUserWithEmailAndPassword($('adminEmail').value.trim(),$('adminPassword').value);status('authStatus','Account created. Your Firebase user ID is: '+c.user.uid+'\nAsk the project owner to add this UID as a document ID in Firestore collection dictionary_admins. You will be able to edit after approval.')}catch(e){status('authStatus',e.message)}};
 $('loginBtn').onclick=async()=>{try{await auth.signInWithEmailAndPassword($('adminEmail').value.trim(),$('adminPassword').value)}catch(e){status('authStatus',e.message)}};$('logoutBtn').onclick=()=>auth.signOut();
 auth.onAuthStateChanged(async user=>{if(!user){isAdmin=false;$('authArea').classList.remove('hidden');$('adminTools').classList.add('hidden');status('authStatus','Not signed in.');return}try{let doc=await db.collection('dictionary_admins').doc(user.uid).get();isAdmin=doc.exists;$('authArea').classList.toggle('hidden',isAdmin);$('adminTools').classList.toggle('hidden',!isAdmin);if(isAdmin){$('adminIdentity').textContent='Signed in: '+user.email;doDictionarySearch()}else{status('authStatus','Signed in as '+user.email+', but this account is not approved as a dictionary admin. Your UID: '+user.uid)}}catch(e){status('authStatus','Could not verify admin permission: '+e.message)}});
